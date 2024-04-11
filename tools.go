@@ -23,16 +23,13 @@ type Tools struct {
 // RandomString returns a string of random characters of length n, using randomStringSource
 // as the source for the string
 func (t *Tools) RandomString(n int) string {
-	// rune is an alias for int32 (4 bytes) -> used to store one character value by UTF-8
-	s := make([]rune, n)
-	r := []rune(randomStringSource)
+	s, r := make([]rune, n), []rune(randomStringSource)
 	for i := range s {
 		p, _ := rand.Prime(rand.Reader, len(r))
 		x, y := p.Uint64(), uint64(len(r))
 		s[i] = r[x%y]
 	}
 
-	//convert []rune to string
 	return string(s)
 }
 
@@ -75,7 +72,12 @@ func (t *Tools) UploadFiles(r *http.Request, uploadDir string, rename ...bool) (
 		t.MaxFileSize = 1024 * 1024 * 1024
 	}
 
-	err := r.ParseMultipartForm(int64(t.MaxFileSize))
+	err := t.CreateDirIfNotExist(uploadDir)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ParseMultipartForm(int64(t.MaxFileSize))
 	if err != nil {
 		return nil, errors.New("the uploaded file is too big")
 	}
@@ -150,4 +152,16 @@ func (t *Tools) UploadFiles(r *http.Request, uploadDir string, rename ...bool) (
 		}
 	}
 	return uploadedFiles, nil
+}
+
+// CreateDirIfNotExist creates a directory, and all necessary parents, if it does not exist
+func (t *Tools) CreateDirIfNotExist(path string) error {
+	const mode = 0755
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err := os.MkdirAll(path, mode)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
